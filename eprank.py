@@ -37,7 +37,9 @@ def exprop(games, num_players, num_its, return_msg=False, quad_degree = 64):
     # array of posterior means and variances
     posterior = np.zeros((num_players, 2))
 
-    for _ in range(num_its):
+    msg_record = dict()
+    num_its_conv = 0
+    for k in range(num_its):
         for i in range(num_players):
             # compute player i's posterior marginal distribution
             mrgnl = np.ones(quad_degree)
@@ -49,8 +51,22 @@ def exprop(games, num_players, num_its, return_msg=False, quad_degree = 64):
             # update the messages:
             for a, j, y_ai in X[i]:
                 msg[i,a] = mean_var(mrgnl / F(msg[j,a], y_ai))
+        if ep_converged(msg_record, msg):
+            num_its_conv = k
+            break
+        msg_record = msg.copy()
 
     if return_msg:
-        return posterior, msg
+        return posterior, msg, num_its_conv
 
-    return posterior
+    return posterior, num_its_conv
+
+
+def ep_converged(old_msgs, new_msgs, tol=1e-6):
+    for key in old_msgs.keys():
+        if not np.allclose(old_msgs[key], new_msgs[key], atol=tol):
+            return False
+    for key in new_msgs.keys():
+        if key not in old_msgs:
+            return False
+    return True
